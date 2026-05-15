@@ -126,27 +126,27 @@ def extract_fields(text):
 
 @app.route("/extract", methods=["POST"])
 def extract():
-    body      = request.get_json()
-    b64       = body.get("pdfBase64","")
-    file_name = body.get("fileName","invoice.pdf")
+    file_name = request.form.get("fileName", "invoice.pdf")
 
-    # ── Strip data-URL prefix if present ─────────────────────────────
-    if "," in b64:
-        b64 = b64.split(",", 1)[1]
-    
+    if "pdfFile" not in request.files:
+        return jsonify({"File Name": file_name, "STATUS": "❌ ERROR: No file received"}), 400
+
     try:
-        pdf_bytes = base64.b64decode(b64)
+        pdf_bytes = request.files["pdfFile"].read()
+
         with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
             text = "\n".join(p.extract_text() or "" for p in pdf.pages)
 
         if not text.strip():
-            return jsonify({"STATUS":"UNREADABLE","File Name":file_name})
+            return jsonify({"File Name": file_name, "STATUS": "UNREADABLE"})
 
         f = extract_fields(text)
 
         def num(v):
-            try: return float(str(v).replace(",","").strip()) if v and str(v).strip() not in ("","NA") else 0.0
-            except: return 0.0
+            try:
+                return float(str(v).replace(",", "").strip()) if v and str(v).strip() not in ("", "NA") else 0.0
+            except:
+                return 0.0
 
         return jsonify({
             "File Name":              file_name,
@@ -177,8 +177,8 @@ def extract():
         })
 
     except Exception as e:
-        return jsonify({"STATUS": f"❌ ERROR: {str(e)[:200]}", "File Name": file_name}), 500
-
+        return jsonify({"File Name": file_name, "STATUS": f"❌ ERROR: {str(e)[:200]}"}), 500
+   
 
 # if __name__ == "__main__":
 #     app.run(host="0.0.0.0", port=8000)
