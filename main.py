@@ -130,6 +130,10 @@ def extract():
     b64       = body.get("pdfBase64","")
     file_name = body.get("fileName","invoice.pdf")
 
+    # ── Strip data-URL prefix if present ─────────────────────────────
+    if "," in b64:
+        b64 = b64.split(",", 1)[1]
+    
     try:
         pdf_bytes = base64.b64decode(b64)
         with pdfplumber.open(io.BytesIO(pdf_bytes)) as pdf:
